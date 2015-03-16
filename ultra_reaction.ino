@@ -25,8 +25,12 @@ volatile unsigned long game_started_at;
 Bounce debouncer_1 = Bounce();
 Bounce debouncer_2 = Bounce();
 bool in_game = false;
+unsigned long p1_clicked_at = 0;
+unsigned long p2_clicked_at = 0;
 int p1_score = 0;
 int p2_score = 0;
+
+
 
 void setup() {
   
@@ -70,51 +74,56 @@ void blink(int pin, int t, int d){//182 - ah ah
 
 void reset(){
   in_game = false;
+  p1_clicked_at = 0;
+  p2_clicked_at = 0;
   digitalWrite(RED_LED, LOW);
   digitalWrite(PLAYER_1_LED, LOW);
   digitalWrite(PLAYER_2_LED, LOW);
 }
 
 void loop() {
-  unsigned long b_pressed_at;
-  unsigned long reaction_time;
+  
   int winner = -1;
  
-  
   if (in_game) {
     debouncer_1.update();
     debouncer_2.update();
     
-    if ( debouncer_1.fell() ) {
-      Serial.println("Player 1 clicked first!");
-      winner = PLAYER_1_LED;
-      p1_score++;
-    } else if ( debouncer_2.fell() ) {
-      Serial.println("Player 2 clicked first!");
-      winner = PLAYER_2_LED;
-      p2_score++;
+    if ( debouncer_1.fell() && p1_clicked_at == 0) {
+      p1_clicked_at = millis();
+      Serial.println("Player 1 clicked");
+    } else if ( debouncer_2.fell() && p2_clicked_at == 0) {
+      p2_clicked_at = millis();
+      Serial.println("Player 2 clicked");
     }
     
-    if (winner >= 0) {
-      b_pressed_at = millis();
-      reaction_time = b_pressed_at - game_started_at;
-      Serial.print("Reaction time: "); Serial.print(reaction_time);
-      Serial.print(" P1 Score: ");    Serial.print(p1_score);
-      Serial.print(" P2 Score: ");    Serial.print(p2_score);
+    if (p1_clicked_at > 0 && p2_clicked_at > 0) {
+      if (p1_clicked_at < p2_clicked_at) {
+        winner = PLAYER_1_LED;
+        p1_score++;
+      } else {
+        winner = PLAYER_2_LED;
+        p2_score++;
+      }
+      
+      Serial.print("Reaction time P1: ");  Serial.print(p1_clicked_at - game_started_at);
+      Serial.print(" Reaction time P1: "); Serial.print(p2_clicked_at - game_started_at);
+      Serial.print(" P1 Score: ");         Serial.print(p1_score);
+      Serial.print(" P2 Score: ");         Serial.print(p2_score);
       Serial.println();
       digitalWrite(winner, HIGH);
       delay(2000);
       reset();
+      
       if (p1_score == WINNING_AT || p2_score == WINNING_AT) {
         int winner_led = p1_score > p2_score ?  PLAYER_1_LED : PLAYER_2_LED;
         blink(winner_led, 10, 30);
         p1_score = 0;
         p2_score = 0;
       }
-     
       delay(2000);
     }
-  
+   
   } else {
     int r = random(0, 100);
     if ( r >= LIGHT_PROB ) {
